@@ -41,25 +41,30 @@ automaticamente.
 8. (Opcional) Menu **BotConversa > Processar leads pendentes agora**:
    dispara manualmente o envio de todas as linhas sem Status.
 
-### Campos customizados no BotConversa (opcional)
+### Campos customizados enviados ao BotConversa
 
-Para enviar Assunto, E-mail, Cidade/Estado, Condomínio e Campo Texto como
-campos customizados do contato no BotConversa, crie esses campos por lá,
-pegue o ID de cada um e adicione a propriedade de script
-`BOTCONVERSA_CUSTOM_FIELDS` (Extensões > Propriedades do projeto > Propriedades
-do script) com um JSON assim:
+O script já envia automaticamente os seguintes custom fields (IDs já
+cadastrados na conta do cliente, definidos em `CUSTOM_FIELD_IDS_PADRAO` no
+topo do `Code.gs`):
+
+| Campo no BotConversa | Origem |
+| --- | --- |
+| Assunto | coluna Assunto |
+| Email | coluna E-mail |
+| REGIÃO | coluna Cidade/Estado |
+| Canal de Aquisição | valor fixo `"Site"` |
+| RESUMO CONVERSA | texto montado: `Contato recebido por site, condomínio <Condomínio>, assunto informado: <Campo Texto>` |
+
+Se algum desses campos for recriado no BotConversa e o ID mudar, não é
+preciso editar o código: basta adicionar a propriedade de script
+`BOTCONVERSA_CUSTOM_FIELD_IDS` (Extensões > Propriedades do projeto >
+Propriedades do script) com um JSON só com os campos que mudaram, ex:
 
 ```json
-{
-  "Campo Texto": "123",
-  "Assunto": "124",
-  "Cidade/Estado": "125",
-  "Condomínio": "126",
-  "E-mail": "127"
-}
+{ "REGIAO": "999999" }
 ```
 
-Só é preciso mapear os campos que você quiser realmente enviar.
+Chaves aceitas: `ASSUNTO`, `EMAIL`, `REGIAO`, `CANAL_AQUISICAO`, `RESUMO_CONVERSA`.
 
 ## Segurança
 

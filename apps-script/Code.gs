@@ -2,15 +2,30 @@
  * Automação de leads: planilha -> BotConversa.
  *
  * Configuração (Extensões > Propriedades do script, ou rode configurarPropriedades()):
- *   BOTCONVERSA_TOKEN        (obrigatório) chave "API-KEY" / Webhook Integration do BotConversa
- *   BOTCONVERSA_FLOW_ID      (opcional) ID numérico do fluxo a disparar após criar o contato
- *   BOTCONVERSA_CUSTOM_FIELDS (opcional) JSON mapeando coluna da planilha -> ID do custom field
- *                             no BotConversa, ex:
- *                             {"Campo Texto":"123","Assunto":"124","Cidade/Estado":"125","Condomínio":"126","E-mail":"127"}
+ *   BOTCONVERSA_TOKEN          (obrigatório) chave "API-KEY" / Webhook Integration do BotConversa
+ *   BOTCONVERSA_FLOW_ID        (opcional) ID numérico do fluxo a disparar após criar o contato
+ *   BOTCONVERSA_CUSTOM_FIELD_IDS (opcional) JSON para sobrescrever os IDs padrão definidos em
+ *                               CUSTOM_FIELD_IDS_PADRAO, caso algum campo seja recriado no BotConversa
+ *                               e o ID mude, ex: {"REGIAO":"999999"}
+ *
+ * Campos customizados enviados ao BotConversa (contas já existentes na conta do cliente):
+ *   Assunto            <- coluna Assunto
+ *   Email              <- coluna E-mail
+ *   REGIÃO             <- coluna Cidade/Estado
+ *   Canal de Aquisição <- valor fixo "Site"
+ *   RESUMO CONVERSA    <- texto montado a partir de Condomínio + Campo Texto
  */
 
 var SHEET_NAME = 'Leads'; // ajuste se a aba tiver outro nome
 var BOTCONVERSA_BASE_URL = 'https://backend.botconversa.com.br/api/v1/webhook';
+
+var CUSTOM_FIELD_IDS_PADRAO = {
+  ASSUNTO: 4084506,           // "Assunto"
+  EMAIL: 4084536,             // "Email"
+  REGIAO: 4952425,            // "REGIÃO"
+  CANAL_AQUISICAO: 4957970,   // "Canal de Aquisição"
+  RESUMO_CONVERSA: 4952418    // "RESUMO CONVERSA"
+};
 
 var COL = {
   DATA: 1,
@@ -137,25 +152,39 @@ function enviarLeadParaBotConversa_(linha) {
   }
 }
 
+function obterCustomFieldIds_() {
+  var overrideJson = PropertiesService.getScriptProperties().getProperty('BOTCONVERSA_CUSTOM_FIELD_IDS');
+  if (!overrideJson) return CUSTOM_FIELD_IDS_PADRAO;
+
+  var override = JSON.parse(overrideJson);
+  var mesclado = {};
+  Object.keys(CUSTOM_FIELD_IDS_PADRAO).forEach(function (chave) { mesclado[chave] = CUSTOM_FIELD_IDS_PADRAO[chave]; });
+  Object.keys(override).forEach(function (chave) { mesclado[chave] = override[chave]; });
+  return mesclado;
+}
+
+function construirResumoConversa_(linha) {
+  var condominio = String(linha[COL.CONDOMINIO - 1] || '').trim() || 'não informado';
+  var campoTexto = String(linha[COL.CAMPO_TEXTO - 1] || '').trim() || 'não informado';
+  return 'Contato recebido por site, condomínio ' + condominio + ', assunto informado: ' + campoTexto;
+}
+
 function enviarCustomFields_(token, subscriberId, linha) {
-  var mapaJson = PropertiesService.getScriptProperties().getProperty('BOTCONVERSA_CUSTOM_FIELDS');
-  if (!mapaJson) return;
+  var ids = obterCustomFieldIds_();
 
-  var mapa = JSON.parse(mapaJson);
-  var valoresPorColuna = {
-    'Assunto': linha[COL.ASSUNTO - 1],
-    'E-mail': linha[COL.EMAIL - 1],
-    'Cidade/Estado': linha[COL.CIDADE_ESTADO - 1],
-    'Condomínio': linha[COL.CONDOMINIO - 1],
-    'Campo Texto': linha[COL.CAMPO_TEXTO - 1]
-  };
+  var envios = [
+    { id: ids.ASSUNTO, valor: linha[COL.ASSUNTO - 1] },
+    { id: ids.EMAIL, valor: linha[COL.EMAIL - 1] },
+    { id: ids.REGIAO, valor: linha[COL.CIDADE_ESTADO - 1] },
+    { id: ids.CANAL_AQUISICAO, valor: 'Site' },
+    { id: ids.RESUMO_CONVERSA, valor: construirResumoConversa_(linha) }
+  ];
 
-  Object.keys(mapa).forEach(function (nomeColuna) {
-    var valor = valoresPorColuna[nomeColuna];
-    if (valor === undefined || valor === '' || valor === null) return;
-    var customFieldId = mapa[nomeColuna];
-    chamarApi_('POST', '/subscriber/' + subscriberId + '/custom_fields/' + customFieldId + '/', token, {
-      value: String(valor)
+  envios.forEach(function (item) {
+    if (!item.id) return;
+    if (item.valor === undefined || item.valor === null || item.valor === '') return;
+    chamarApi_('POST', '/subscriber/' + subscriberId + '/custom_fields/' + item.id + '/', token, {
+      value: String(item.valor)
     });
   });
 }
