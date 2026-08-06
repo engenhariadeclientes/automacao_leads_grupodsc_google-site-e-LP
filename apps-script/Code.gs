@@ -98,6 +98,14 @@ function getSheet_() {
   return ss.getSheetByName(SHEET_NAME) || ss.getSheets()[0];
 }
 
+/** Considera a linha pronta para envio quando Data, Assunto, Nome, Sobrenome, Telefone, E-mail e Cidade/Estado já estiverem preenchidos. */
+function linhaCompleta_(linha) {
+  var colunasObrigatorias = [COL.DATA, COL.ASSUNTO, COL.NOME, COL.SOBRENOME, COL.TELEFONE, COL.EMAIL, COL.CIDADE_ESTADO];
+  return colunasObrigatorias.every(function (col) {
+    return linha[col - 1] !== '' && linha[col - 1] !== null && linha[col - 1] !== undefined;
+  });
+}
+
 /** Varre a planilha e envia ao BotConversa toda linha que ainda não tem Status preenchido. */
 function processarLeadsPendentes() {
   garantirColunaStatus_();
@@ -111,14 +119,10 @@ function processarLeadsPendentes() {
   for (var i = 0; i < dados.length; i++) {
     var linha = dados[i];
     var status = linha[COL.STATUS - 1];
-    var telefone = linha[COL.TELEFONE - 1];
     var rowIndex = i + 2;
 
-    var campoTexto = linha[COL.CAMPO_TEXTO - 1];
-
     if (status) continue; // já processada
-    if (!telefone) continue; // linha sem telefone, ignora
-    if (!campoTexto) continue; // linha ainda incompleta (preenchimento em andamento), espera a próxima mudança
+    if (!linhaCompleta_(linha)) continue; // preenchimento ainda em andamento, espera a próxima mudança
 
     try {
       enviarLeadParaBotConversa_(linha);
