@@ -114,8 +114,11 @@ function processarLeadsPendentes() {
     var telefone = linha[COL.TELEFONE - 1];
     var rowIndex = i + 2;
 
+    var campoTexto = linha[COL.CAMPO_TEXTO - 1];
+
     if (status) continue; // já processada
     if (!telefone) continue; // linha sem telefone, ignora
+    if (!campoTexto) continue; // linha ainda incompleta (preenchimento em andamento), espera a próxima mudança
 
     try {
       enviarLeadParaBotConversa_(linha);
