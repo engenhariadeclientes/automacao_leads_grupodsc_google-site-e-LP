@@ -98,12 +98,15 @@ function getSheet_() {
   return ss.getSheetByName(SHEET_NAME) || ss.getSheets()[0];
 }
 
-/** Considera a linha pronta para envio quando Data, Assunto, Nome, Sobrenome, Telefone, E-mail e Cidade/Estado já estiverem preenchidos. */
+/**
+ * Considera a linha pronta para envio quando o Telefone estiver preenchido.
+ * Os demais campos (Assunto, E-mail, Cidade/Estado, Condomínio, Campo Texto)
+ * não são obrigatórios no formulário do site, então não travam o envio caso
+ * fiquem em branco.
+ */
 function linhaCompleta_(linha) {
-  var colunasObrigatorias = [COL.DATA, COL.ASSUNTO, COL.NOME, COL.SOBRENOME, COL.TELEFONE, COL.EMAIL, COL.CIDADE_ESTADO];
-  return colunasObrigatorias.every(function (col) {
-    return linha[col - 1] !== '' && linha[col - 1] !== null && linha[col - 1] !== undefined;
-  });
+  var telefone = linha[COL.TELEFONE - 1];
+  return telefone !== '' && telefone !== null && telefone !== undefined;
 }
 
 /** Varre a planilha e envia ao BotConversa toda linha que ainda não tem Status preenchido. */
@@ -176,20 +179,25 @@ function construirResumoConversa_(linha) {
   return 'Contato recebido por site, condomínio ' + condominio + ', assunto informado: ' + campoTexto;
 }
 
+/** Garante um valor não vazio para o custom field — o fluxo do BotConversa depende desses campos estarem sempre preenchidos. */
+function valorOuPadrao_(valor) {
+  var texto = String(valor || '').trim();
+  return texto || 'Não informado';
+}
+
 function enviarCustomFields_(token, subscriberId, linha) {
   var ids = obterCustomFieldIds_();
 
   var envios = [
-    { id: ids.ASSUNTO, valor: linha[COL.ASSUNTO - 1] },
-    { id: ids.EMAIL, valor: linha[COL.EMAIL - 1] },
-    { id: ids.REGIAO, valor: linha[COL.CIDADE_ESTADO - 1] },
+    { id: ids.ASSUNTO, valor: valorOuPadrao_(linha[COL.ASSUNTO - 1]) },
+    { id: ids.EMAIL, valor: valorOuPadrao_(linha[COL.EMAIL - 1]) },
+    { id: ids.REGIAO, valor: valorOuPadrao_(linha[COL.CIDADE_ESTADO - 1]) },
     { id: ids.CANAL_AQUISICAO, valor: 'Site' },
     { id: ids.RESUMO_CONVERSA, valor: construirResumoConversa_(linha) }
   ];
 
   envios.forEach(function (item) {
     if (!item.id) return;
-    if (item.valor === undefined || item.valor === null || item.valor === '') return;
     chamarApi_('POST', '/subscriber/' + subscriberId + '/custom_fields/' + item.id + '/', token, {
       value: String(item.valor)
     });
