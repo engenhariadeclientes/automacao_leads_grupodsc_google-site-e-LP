@@ -23,11 +23,11 @@ var SHEET_NAME = 'Leads'; // ajuste se a aba tiver outro nome
 var BOTCONVERSA_BASE_URL = 'https://backend.botconversa.com.br/api/v1/webhook';
 
 var CUSTOM_FIELD_IDS_PADRAO = {
-  ASSUNTO: 4084506,           // "Assunto"
-  EMAIL: 4084536,             // "Email"
-  REGIAO: 4952425,            // "REGIÃO"
-  CANAL_AQUISICAO: 4957970,   // "Canal de Aquisição"
-  RESUMO_CONVERSA: 4952418    // "RESUMO CONVERSA"
+  ASSUNTO: 4561509,           // "Assunto"
+  EMAIL: 4561539,             // "Email"
+  REGIAO: 4959978,            // "REGIÃO"
+  CANAL_AQUISICAO: 4960197,   // "Canal de Aquisição"
+  RESUMO_CONVERSA: 4959971    // "RESUMO CONVERSA"
 };
 
 var COL = {
