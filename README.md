@@ -66,6 +66,39 @@ Propriedades do script) com um JSON só com os campos que mudaram, ex:
 
 Chaves aceitas: `ASSUNTO`, `EMAIL`, `REGIAO`, `CANAL_AQUISICAO`, `RESUMO_CONVERSA`.
 
+## Leads recebidos por e-mail (Duplique Santa Catarina)
+
+Além dos leads lançados direto na planilha, o script também importa
+automaticamente os leads que chegam por e-mail do formulário do site
+Duplique Santa Catarina (remetente `noreply@equipedigital.com`), com corpo
+no formato:
+
+```
+Nome: ...
+Email: ...
+Telefone: ...
+Condominio: ...
+Unidade: ...
+Aceite Termos: ...
+Mensagem: ...
+```
+
+Mapeamento pra planilha: `Nome` → Nome, `Email` → E-mail, `Telefone` →
+Telefone, `Condominio` → Condomínio, `Unidade` → Cidade/Estado, `Mensagem`
+→ Campo Texto. O **Assunto** do e-mail vira a coluna Assunto.
+
+Isso só funciona se a planilha e a caixa de e-mail (`noreply@equipedigital.com`
+como remetente) pertencerem à **mesma conta Google** que roda o Apps Script,
+já que ele lê o Gmail dessa conta.
+
+Ative pelo menu **BotConversa > Ativar leitura automática de e-mails
+(Duplique SC)** — verifica a caixa de entrada a cada 5 minutos, lança cada
+e-mail novo como uma linha na aba Leads (reaproveitando toda a lógica de
+envio ao BotConversa) e marca o e-mail com o marcador
+`BotConversa/Processado` pra nunca reprocessar o mesmo lead. Também dá pra
+rodar uma vez manualmente pelo menu **BotConversa > Processar e-mails do
+Duplique SC agora**.
+
 ## Segurança
 
 O token do BotConversa nunca é gravado no código-fonte — ele é lido de
