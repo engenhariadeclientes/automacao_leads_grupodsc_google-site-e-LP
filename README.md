@@ -1,8 +1,20 @@
 # Automação de Leads: Planilha -> BotConversa
 
-Envia automaticamente para o BotConversa (WhatsApp) cada novo lead lançado na
-planilha do Google Sheets (Google Site / LP), criando/atualizando o contato,
-preenchendo campos customizados e, opcionalmente, disparando um fluxo.
+Envia automaticamente para o BotConversa (WhatsApp) cada novo lead, criando
+ou atualizando o contato, preenchendo campos customizados e, opcionalmente,
+disparando um fluxo. Existem dois projetos Apps Script independentes neste
+repositório, cada um instalado numa planilha diferente:
+
+- **`apps-script/`** — leads do Google Site / LP, lançados direto na
+  planilha (manualmente ou por integração externa que escreve a linha).
+- **`apps-script-duplique-sc/`** — leads do site Duplique Santa Catarina,
+  recebidos por **e-mail** e importados automaticamente para a planilha.
+
+Ambos compartilham a mesma estrutura de colunas e a mesma lógica de envio ao
+BotConversa — a diferença é só como a linha chega na planilha. Cada
+planilha tem seu próprio projeto Apps Script (Extensões > Apps Script) e
+suas próprias Propriedades do Script, então o token do BotConversa precisa
+ser configurado em cada uma separadamente.
 
 ## Colunas esperadas na planilha
 
@@ -18,12 +30,16 @@ automaticamente.
 
 ## Instalação (Google Apps Script)
 
+Repita esses passos em cada planilha, usando o `Code.gs`/`appsscript.json`
+da pasta correspondente (`apps-script/` para o site/LP, `apps-script-duplique-sc/`
+para o Duplique SC):
+
 1. Na planilha, abra **Extensões > Apps Script**.
-2. Copie o conteúdo de `apps-script/Code.gs` para o arquivo `Code.gs` do
-   projeto (substitua o conteúdo padrão).
-3. Copie o conteúdo de `apps-script/appsscript.json` para o manifesto do
-   projeto (ative "Mostrar arquivo de manifesto" em Configurações do projeto,
-   se necessário).
+2. Copie o conteúdo do `Code.gs` da pasta correspondente para o arquivo
+   `Code.gs` do projeto (substitua o conteúdo padrão).
+3. Copie o conteúdo do `appsscript.json` da mesma pasta para o manifesto do
+   projeto (ative "Mostrar arquivo de manifesto" em Configurações do
+   projeto, se necessário).
 4. Se a aba da planilha não se chamar `Leads`, ajuste a constante
    `SHEET_NAME` no topo do `Code.gs`.
 5. Salve e recarregue a planilha (F5). Um novo menu **BotConversa** vai
@@ -37,7 +53,8 @@ automaticamente.
      código-fonte nem é versionado no repositório).
 7. Menu **BotConversa > Ativar envio automático (trigger)**: cria o gatilho
    que roda o script sempre que a planilha é alterada (nova linha, colar,
-   importação, etc).
+   importação, etc). Use isso no projeto `apps-script/` (leads lançados
+   direto na planilha).
 8. (Opcional) Menu **BotConversa > Processar leads pendentes agora**:
    dispara manualmente o envio de todas as linhas sem Status.
 
@@ -66,12 +83,10 @@ Propriedades do script) com um JSON só com os campos que mudaram, ex:
 
 Chaves aceitas: `ASSUNTO`, `EMAIL`, `REGIAO`, `CANAL_AQUISICAO`, `RESUMO_CONVERSA`.
 
-## Leads recebidos por e-mail (Duplique Santa Catarina)
+## Leads recebidos por e-mail (apps-script-duplique-sc/)
 
-Além dos leads lançados direto na planilha, o script também importa
-automaticamente os leads que chegam por e-mail do formulário do site
-Duplique Santa Catarina (remetente `noreply@equipedigital.com`), com corpo
-no formato:
+Os leads do site Duplique Santa Catarina chegam por e-mail, com corpo no
+formato:
 
 ```
 Nome: ...
@@ -87,9 +102,14 @@ Mapeamento pra planilha: `Nome` → Nome, `Email` → E-mail, `Telefone` →
 Telefone, `Condominio` → Condomínio, `Unidade` → Cidade/Estado, `Mensagem`
 → Campo Texto. O **Assunto** do e-mail vira a coluna Assunto.
 
-Isso só funciona se a planilha e a caixa de e-mail (`noreply@equipedigital.com`
-como remetente) pertencerem à **mesma conta Google** que roda o Apps Script,
-já que ele lê o Gmail dessa conta.
+O filtro usado para identificar esses e-mails é pelo **assunto**, não pelo
+remetente: o script busca e-mails cujo assunto contenha os termos
+`"Lead Site Duplique"` e `"Automação"` (configurável em
+`EMAIL_DUPLIQUE_ASSUNTO_TERMOS`, no topo do `Code.gs`).
+
+Isso só funciona se a planilha e a caixa de e-mail onde esses leads chegam
+pertencerem à **mesma conta Google** que roda o Apps Script, já que ele lê
+o Gmail dessa conta.
 
 Ative pelo menu **BotConversa > Ativar leitura automática de e-mails
 (Duplique SC)** — verifica a caixa de entrada a cada 5 minutos, lança cada

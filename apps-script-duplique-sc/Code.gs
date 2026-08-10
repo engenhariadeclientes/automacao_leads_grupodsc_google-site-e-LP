@@ -1,5 +1,5 @@
 /**
- * Automação de leads: planilha -> BotConversa.
+ * Automação de leads (Duplique Santa Catarina): e-mail -> planilha -> BotConversa.
  *
  * Configuração (Extensões > Propriedades do script, ou rode configurarPropriedades()):
  *   BOTCONVERSA_TOKEN          (obrigatório) chave "API-KEY" / Webhook Integration do BotConversa
@@ -14,6 +14,9 @@
  *   REGIÃO             <- coluna Cidade/Estado
  *   Canal de Aquisição <- valor fixo "Site"
  *   RESUMO CONVERSA    <- texto montado a partir de Condomínio + Campo Texto
+ *
+ * Leads chegam por e-mail com assunto contendo "Lead Site Duplique" e "Automação"
+ * (o remetente não é usado como filtro).
  */
 
 var SHEET_NAME = 'Leads'; // ajuste se a aba tiver outro nome
@@ -46,6 +49,9 @@ function onOpen() {
     .addItem('Processar leads pendentes agora', 'processarLeadsPendentes')
     .addItem('Ativar envio automático (trigger)', 'ativarTriggerAutomatico')
     .addItem('Configurar token/flow/campos', 'configurarPropriedades')
+    .addSeparator()
+    .addItem('Processar e-mails do Duplique SC agora', 'processarEmailsDuplique_')
+    .addItem('Ativar leitura automática de e-mails (Duplique SC)', 'ativarTriggerEmailDuplique_')
     .addToUi();
 }
 
@@ -83,6 +89,70 @@ function ativarTriggerAutomatico() {
   }
   garantirColunaStatus_();
   SpreadsheetApp.getUi().alert('Envio automático ativado.');
+}
+
+var EMAIL_DUPLIQUE_ASSUNTO_TERMOS = ['Lead Site Duplique', 'Automação'];
+var EMAIL_DUPLIQUE_LABEL = 'BotConversa/Processado';
+
+/** Cria o trigger de tempo que verifica novos e-mails de lead do Duplique SC periodicamente. */
+function ativarTriggerEmailDuplique_() {
+  var jaExiste = ScriptApp.getProjectTriggers().some(function (t) {
+    return t.getHandlerFunction() === 'processarEmailsDuplique_';
+  });
+  if (!jaExiste) {
+    ScriptApp.newTrigger('processarEmailsDuplique_').timeBased().everyMinutes(5).create();
+  }
+  garantirColunaStatus_();
+  SpreadsheetApp.getUi().alert('Leitura automática de e-mails do Duplique SC ativada (verifica a cada 5 minutos).');
+}
+
+/** Extrai o valor de um campo no formato "Nome do campo: valor" do corpo em texto simples do e-mail. */
+function extrairCampoEmail_(corpoTexto, nomeCampo) {
+  var regex = new RegExp(nomeCampo + '\\s*:\\s*(.*)', 'i');
+  var match = corpoTexto.match(regex);
+  return match ? match[1].trim() : '';
+}
+
+/** Monta a busca do Gmail exigindo todos os termos do assunto configurado, ignorando o remetente. */
+function construirQueryAssuntoDuplique_() {
+  var termosAssunto = EMAIL_DUPLIQUE_ASSUNTO_TERMOS.map(function (termo) {
+    return 'subject:"' + termo + '"';
+  }).join(' ');
+  return termosAssunto + ' -label:"' + EMAIL_DUPLIQUE_LABEL + '"';
+}
+
+/** Busca e-mails de lead do Duplique SC ainda não processados e lança cada um como uma linha na aba de Leads. */
+function processarEmailsDuplique_() {
+  var label = GmailApp.getUserLabelByName(EMAIL_DUPLIQUE_LABEL) || GmailApp.createLabel(EMAIL_DUPLIQUE_LABEL);
+  var threads = GmailApp.search(construirQueryAssuntoDuplique_(), 0, 20);
+  if (threads.length === 0) return;
+
+  var sheet = getSheet_();
+  garantirColunaStatus_();
+
+  threads.forEach(function (thread) {
+    thread.getMessages().forEach(function (mensagem) {
+      var corpo = mensagem.getPlainBody();
+      var linha = [
+        mensagem.getDate(),                          // Data
+        mensagem.getSubject(),                        // Assunto
+        extrairCampoEmail_(corpo, 'Nome'),            // Nome
+        '',                                            // Sobrenome
+        extrairCampoEmail_(corpo, 'Telefone'),        // Telefone
+        extrairCampoEmail_(corpo, 'Email'),           // E-mail
+        extrairCampoEmail_(corpo, 'Unidade'),         // Cidade/Estado
+        extrairCampoEmail_(corpo, 'Condominio'),      // Condomínio
+        extrairCampoEmail_(corpo, 'Mensagem'),        // Campo Texto
+        ''                                             // Status
+      ];
+      sheet.appendRow(linha);
+    });
+
+    thread.addLabel(label);
+    thread.markRead();
+  });
+
+  processarLeadsPendentes();
 }
 
 function garantirColunaStatus_() {
